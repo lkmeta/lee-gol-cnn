@@ -331,3 +331,72 @@ def remove_duplicates(matrix, matrix_after_conways, matrix_with_path):
 
     # Return the matrices and the list of duplicate indexes
     return matrix_clean, matrix_after_conways_clean, matrix_with_path_clean
+
+
+# Load datasets from the output directory
+def load_datasets(name):
+    # Load the first dataset
+    dataset_name = name + "_1"
+    matrix = np.load("./output/" + dataset_name + "/matrices/X_input.npy")
+    matrix_after_conways = np.load(
+        "./output/" + dataset_name + "/matrices/X_after_conways.npy"
+    )
+    matrix_with_path = np.load("./output/" + dataset_name + "/matrices/y_target.npy")
+
+    # Load all datasets from the output directory that start with "dataset_"
+    with os.scandir("./output") as entries:
+        for entry in entries:
+            if (
+                entry.is_dir()
+                and entry.name.startswith("dataset_")
+                and entry.name != dataset_name
+            ):
+                matrix = np.concatenate(
+                    (
+                        matrix,
+                        np.load("./output/" + entry.name + "/matrices/X_input.npy"),
+                    ),
+                    axis=0,
+                )
+                matrix_after_conways = np.concatenate(
+                    (
+                        matrix_after_conways,
+                        np.load(
+                            "./output/" + entry.name + "/matrices/X_after_conways.npy"
+                        ),
+                    ),
+                    axis=0,
+                )
+                matrix_with_path = np.concatenate(
+                    (
+                        matrix_with_path,
+                        np.load("./output/" + entry.name + "/matrices/y_target.npy"),
+                    ),
+                    axis=0,
+                )
+
+    # # Print the shapes of the matrices
+    # print("matrix shape: ", matrix.shape)
+    # print("matrix_after_conways shape: ", matrix_after_conways.shape)
+    # print("matrix_with_path shape: ", matrix_with_path.shape)
+
+    # Remove duplicates from the matrices
+    (
+        matrix_clean,
+        matrix_after_conways_clean,
+        matrix_with_path_clean,
+    ) = remove_duplicates(matrix, matrix_after_conways, matrix_with_path)
+
+    # # Print the shapes of the matrices after removing duplicates
+    # print("matrix_clean shape: ", matrix_clean.shape)
+    # print("matrix_after_conways_clean shape: ", matrix_after_conways_clean.shape)
+    # print("matrix_with_path_clean shape: ", matrix_with_path_clean.shape)
+
+    # # Save the matrices
+    # np.save("./output/X_input_clean.npy", matrix_clean)
+    # np.save("./output/X_after_conways_clean.npy", matrix_after_conways_clean)
+    # np.save("./output/y_target_clean.npy", matrix_with_path_clean)
+
+    # print("\n\nMatrices saved to files successfully!")
+
+    return matrix_clean, matrix_after_conways_clean, matrix_with_path_clean
