@@ -4,6 +4,7 @@ import time
 import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import deque
+import os
 
 
 # Implementing the Lee algorithm for finding the shortest path in a matrix
@@ -234,6 +235,7 @@ def plot_matrices(
     plt.tight_layout()
 
     # save image locally
+    # cwd = os.getcwd()
     plt.savefig("./output/" + img_path + "/" + img_name)
     plt.close()
 
@@ -245,6 +247,12 @@ def generate_dataset(num_of_matrices, N, M, test_name):
     y_target = (
         []
     )  # initialize empty list to store the output matrices (with the path on them)
+
+    # check if directories exist, if not create them
+    # cwd = os.getcwd()
+    if not os.path.exists("./output/" + test_name):
+        os.mkdir("./output/" + test_name)
+        os.mkdir("./output/" + test_name + "/matrices")
 
     for i in range(num_of_matrices):
         print("\nGenerating matrix %s..." % (i))
@@ -281,3 +289,45 @@ def generate_dataset(num_of_matrices, N, M, test_name):
     np.save("./output/" + test_name + "/matrices/y_target.npy", y_target)
 
     print("\n\nMatrices saved to files successfully!")
+
+
+# Function to remove duplicates from dataset
+def remove_duplicates(matrix, matrix_after_conways, matrix_with_path):
+    # Create copies of matrices
+    matrix_clean = np.copy(matrix)
+    matrix_after_conways_clean = np.copy(matrix_after_conways)
+    matrix_with_path_clean = np.copy(matrix_with_path)
+
+    while True:
+        # List to store the indexes of duplicates
+        list_of_duplicates_indexes = []
+
+        # Iterate through all matrices and remove duplicates
+        for i in range(matrix_clean.shape[0]):
+            for j in range(i + 1, matrix_clean.shape[0]):
+                # Check if the index is out of the range of the matrix
+                if j >= matrix_clean.shape[0]:
+                    break
+
+                # Check if duplicates are found
+                if np.all(
+                    matrix_after_conways_clean[i] == matrix_after_conways_clean[j]
+                ):
+                    # Add the indexes of duplicates to the list
+                    list_of_duplicates_indexes.append(j)
+
+                    # Remove duplicates
+                    matrix_clean = np.delete(matrix_clean, j, axis=0)
+                    matrix_after_conways_clean = np.delete(
+                        matrix_after_conways_clean, j, axis=0
+                    )
+                    matrix_with_path_clean = np.delete(
+                        matrix_with_path_clean, j, axis=0
+                    )
+
+        # If no duplicates are found, exit the loop
+        if len(list_of_duplicates_indexes) == 0:
+            break
+
+    # Return the matrices and the list of duplicate indexes
+    return matrix_clean, matrix_after_conways_clean, matrix_with_path_clean
