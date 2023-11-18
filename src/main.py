@@ -11,6 +11,7 @@ METRICS = ["accuracy"]
 EPOCHS = 100
 
 
+# Preprocess dataset (shuffle and split into training and test sets)
 def preprocess(matrix, matrix_after_conways, matrix_with_path):
     # Shuffle the matrices
     def custom_random():

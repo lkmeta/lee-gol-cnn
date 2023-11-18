@@ -7,6 +7,22 @@ from collections import deque
 import os
 
 
+"""
+Utils.py contains the following functions:
+    - lee_algorithm
+    - get_neighbors
+    - get_shortest_path
+    - conways_game_of_life
+    - generate_matrices
+    - plot_matrices
+    - generate_dataset
+    - remove_duplicates
+    - load_datasets
+    - generate_matrices_without_path
+    - generate_dataset_without_path
+"""
+
+
 # Implementing the Lee algorithm for finding the shortest path in a matrix
 def lee_algorithm(matrix, start, end):
     # Using a deque for efficient pop and append operations
@@ -400,3 +416,128 @@ def load_datasets(name):
     # print("\n\nMatrices saved to files successfully!")
 
     return matrix_clean, matrix_after_conways_clean, matrix_with_path_clean
+
+
+# Generate a Random Matrix and apply Conway's Game of Life
+# until: a) end, start exists && b) Lee algorithm DOESN'T return a path
+# Return matrix_without, matrix_after_conways_without, matrix_without_path
+def generate_matrices_without_path(N, M):
+    start = (0, 0)
+    end = (N - 1, M - 1)
+
+    while True:
+        print("\nGenerating a random matrix...")
+        matrix = np.random.randint(2, size=(N, M))
+
+        num_of_conway_iterations = 0
+        temp_matrix = matrix.copy()
+
+        print("Applying Conway's Game of Life...")
+        while True and num_of_conway_iterations < 100:
+            # Progress bar :)
+            sys.stdout.write("\r")
+            sys.stdout.write(
+                "[%-100s] %d%%"
+                % ("=" * num_of_conway_iterations, 1 * num_of_conway_iterations)
+            )
+            sys.stdout.flush()
+            time.sleep(0.05)
+
+            num_of_conway_iterations += 1
+            matrix_after_conways = conways_game_of_life(temp_matrix)
+
+            temp_matrix = matrix_after_conways.copy()
+
+            # Check if end and start exist in matrix_after_conways
+            if (
+                matrix_after_conways[start[0]][start[1]] == 0
+                or matrix_after_conways[end[0]][end[1]] == 0
+            ):
+                # print("Start or end does not exist in matrix. Need to generate a new matrix.")
+                continue
+
+            shortest_path = lee_algorithm(
+                matrix_after_conways, start, end
+            )  # None or list of tuples (path)
+
+            # If path DOESN'T exist
+            if not shortest_path:
+                print("\nShortest path doesn't exist between %s and %s:" % (start, end))
+
+                # Create the final matrix without a path as a copy of matrix_after_conways
+                matrix_without_path = matrix_after_conways.copy()
+
+                return (
+                    matrix,
+                    matrix_after_conways,
+                    num_of_conway_iterations,
+                    matrix_without_path,
+                )
+
+            # If the matrix is OFF, then there is no path
+            if sum(sum(matrix_after_conways)) == 0:
+                print(
+                    "\nCells are all zeros after %s conways iteration."
+                    % (num_of_conway_iterations)
+                )
+                print("Need to generate a new random matrix.")
+                break
+
+
+# Generate a dataset of matrices without a path
+def generate_dataset_without_path(num_of_matrices, N, M, test_name):
+    X_input = []  # initialize an empty list to store the input matrices
+    X_after_conways = []  # initialize an empty list to store the matrices after conways
+    y_target = (
+        []
+    )  # initialize an empty list to store the output matrices (with the path on them)
+
+    for i in range(num_of_matrices):
+        print("\nGenerating matrix without a path %s..." % (i))
+        image_name = (
+            "matrix_without_path_"
+            + str(i)
+            + "_dimensions_"
+            + str(N)
+            + "X"
+            + str(M)
+            + ".png"
+        )
+        (
+            matrix,
+            matrix_after_conways,
+            iteration,
+            matrix_with_path,
+        ) = generate_matrices_without_path(N, M)
+        plot_matrices(
+            matrix,
+            matrix_after_conways,
+            iteration,
+            matrix_with_path,
+            N,
+            M,
+            image_name,
+            test_name,
+        )
+
+        # append matrices to lists
+        X_input.append(matrix)
+        X_after_conways.append(matrix_after_conways)
+        y_target.append(matrix_with_path)
+
+    # convert final lists to numpy arrays
+    X_input = np.array(X_input)
+    X_after_conways = np.array(X_after_conways)
+    y_target = np.array(y_target)
+
+    # save numpy arrays to files
+    np.save("./output/" + test_name + "/matrices/X_input_without.npy", X_input)
+    np.save(
+        "./output/" + test_name + "/matrices/X_after_conways_without.npy",
+        X_after_conways,
+    )
+    np.save("./output/" + test_name + "/matrices/y_target_without.npy", y_target)
+
+    print("\n\nMatrices saved to files successfully!")
+
+    return X_input, X_after_conways, y_target

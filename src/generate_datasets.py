@@ -1,4 +1,4 @@
-from utils import generate_dataset
+from utils import generate_dataset, generate_dataset_without_path
 
 """
 create_10_datasets function creates 10 datasets that will be used for training and testing
@@ -34,3 +34,9 @@ if __name__ == "__main__":
 
     # Create 10 datasets for training and testing
     create_10_datasets()
+
+    # Generate dataset with 1 matrix WITHOUT PATH of dimensions 5x5
+    # generate_dataset_without_path(1, 5, 5, "test")
+
+    # Generate dataset with 100 matrices WITHOUT PATH of dimensions 5x5
+    # generate_dataset_without_path(100, 5, 5, "dataset")
