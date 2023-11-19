@@ -321,7 +321,3 @@ if __name__ == "__main__":
 
     # Plot extra useful plots
     cnn.plot_extra()
-
-    # print hi
-
-    p
