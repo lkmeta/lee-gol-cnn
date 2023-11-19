@@ -1,17 +1,33 @@
 import random
 from utils import load_datasets
 
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.models import Sequential
+from keras.layers import Conv2D, Flatten, Dense, Reshape
+from keras.optimizers import Adam
+import tensorflow as tf
+import datetime
+import seaborn as sns
+from contextlib import redirect_stdout
+
 
 # Global Model Parameters
-PATH = "CNN_model"
+OUTPUT_PATH = "output/model/"
+MODEL_NAME = "CNN_model"
 ACTIVATION_FUNCTION = "sigmoid"
 LOSS_FUNCTION = "mean_squared_error"
 OPTIMIZER = "adam"
 METRICS = ["accuracy"]
-EPOCHS = 100
+EPOCHS = 20
+PATIENCE = 10
+
+NUM_OF_MATRICES = 100
+MATRIX_ROWS = 5
+MATRIX_COLS = 5
 
 
-# Preprocess dataset (shuffle and split into training and test sets)
+# Preprocess dataset (shuffle and split into training and test sets (80%:20%))
 def preprocess(matrix, matrix_after_conways, matrix_with_path):
     # Shuffle the matrices
     def custom_random():
@@ -55,6 +71,208 @@ def preprocess(matrix, matrix_after_conways, matrix_with_path):
     )
 
 
+class CNN:
+    def __init__(
+        self,
+        matrix_after_conways_train,
+        matrix_with_path_train,
+        matrix_after_conways_test,
+        matrix_with_path_test,
+    ):
+        self.matrix_after_conways_train = matrix_after_conways_train
+        self.matrix_with_path_train = matrix_with_path_train
+        self.matrix_after_conways_test = matrix_after_conways_test
+        self.matrix_with_path_test = matrix_with_path_test
+
+    def build(self):
+        # Initialize the model
+        model = Sequential(name=MODEL_NAME)
+
+        # CNN layer for 2D input
+        model.add(
+            Conv2D(
+                32, (3, 3), activation="relu", input_shape=(MATRIX_ROWS, MATRIX_COLS, 1)
+            )
+        )
+        # Flatten layer for the tensor to 1D vector
+        model.add(Flatten())
+
+        # Dense layer
+        model.add(Dense(25, activation=ACTIVATION_FUNCTION))
+
+        # Need to reshape the tensor to 2D matrix
+        model.add(Reshape((MATRIX_ROWS, MATRIX_COLS, 1)))
+
+        # Compile the model
+        model.compile(optimizer=OPTIMIZER, loss=LOSS_FUNCTION, metrics=METRICS)
+
+        # Callback to prevent overfitting
+        callback = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=PATIENCE)
+
+        # Print the model summary
+        model.summary()
+
+        # Fit the model
+        model.fit(
+            matrix_after_conways_train,
+            matrix_with_path_train,
+            epochs=EPOCHS,
+            validation_data=(matrix_after_conways_test, matrix_with_path_test),
+            callbacks=[callback],
+        )
+
+        return model
+
+    def save(self, model):
+        # Save the summary of the model
+        with open(OUTPUT_PATH + MODEL_NAME + "_summary.txt", "w") as f:
+            with redirect_stdout(f):
+                model.summary()
+
+        # Save the model architecture
+        model_json = model.to_json()
+        with open(OUTPUT_PATH + MODEL_NAME + ".json", "w") as json_file:
+            json_file.write(model_json)
+
+        # Save the model parameters
+        with open(OUTPUT_PATH + MODEL_NAME + "_parameters.txt", "w") as f:
+            f.write("Activation function: " + ACTIVATION_FUNCTION + "\n")
+            f.write("Loss function: " + LOSS_FUNCTION + "\n")
+            f.write("Optimizer: " + OPTIMIZER + "\n")
+            f.write("Metrics: " + str(METRICS) + "\n")
+            f.write("Epochs: " + str(EPOCHS) + "\n")
+            f.write("Patience: " + str(PATIENCE) + "\n")
+
+        # Save the model
+        model.save("models/" + MODEL_NAME + ".h5")
+
+    def plot(self):
+        # Plot the model
+        tf.keras.utils.plot_model(
+            self.model,
+            to_file=OUTPUT_PATH + MODEL_NAME + ".png",
+            show_shapes=True,
+            show_layer_names=True,
+        )
+
+        # Plot the training and validation accuracy and loss at each epoch
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(self.history.history["accuracy"], label="Training Accuracy")
+        plt.plot(self.history.history["val_accuracy"], label="Validation Accuracy")
+        plt.title("Training and Validation Accuracy")
+        plt.xlabel("Epochs")
+        plt.ylabel("Accuracy")
+        plt.legend()
+
+        plt.subplot(1, 2, 2)
+        plt.plot(self.history.history["loss"], label="Training Loss")
+        plt.plot(self.history.history["val_loss"], label="Validation Loss")
+        plt.title("Training and Validation Loss")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.legend()
+
+        plt.savefig(OUTPUT_PATH + MODEL_NAME + "_plot.png")
+
+    # Plot extra plots that show the matrices before and after Conways,
+    # the prediction and the difference between the prediction and the matrix with path
+    def plot_extra(self):
+        for i in range(5):
+            manager = plt.get_current_fig_manager()
+            manager.full_screen_toggle()
+
+            plt.subplot(151)
+            ax = sns.heatmap(
+                self.matrix_after_conways_test[i, :, :],
+                annot=True,
+                cmap="inferno",
+                linewidths=0.5,
+                linecolor="black",
+                cbar=False,
+            )
+            plt.title("Matrix after Conways")
+            plt.subplot(152)
+            ax = sns.heatmap(
+                self.matrix_with_path_test[i, :, :],
+                annot=True,
+                cmap="inferno",
+                linewidths=0.5,
+                linecolor="black",
+                cbar=False,
+            )
+            plt.title("Matrix with path")
+
+            plt.subplot(153)
+            # np.around(model.predict(X_val_intermediate[i,:,:].reshape(1,5,5,1)).reshape(5,5) * 2, decimals=2),
+            # annot=True, cmap="inferno", linewidths=.5, linecolor='black', cbar=False)
+            ax = sns.heatmap(
+                np.around(
+                    np.abs(
+                        self.matrix_after_conways_test[i, :, :]
+                        .reshape(1, 5, 5, 1)
+                        .reshape(5, 5)
+                        * 2
+                    ),
+                    decimals=2,
+                ),
+                annot=True,
+                cmap="inferno",
+                linewidths=0.5,
+                linecolor="black",
+                cbar=False,
+            )
+            plt.title("Prediction")
+
+            plt.subplot(154)
+            ax = sns.heatmap(
+                np.around(
+                    np.abs(
+                        self.matrix_with_path_test[i, :, :]
+                        - self.model.predict(
+                            self.matrix_after_conways_test[i, :, :].reshape(1, 5, 5, 1)
+                        ).reshape(5, 5)
+                        * 2
+                    ),
+                    decimals=2,
+                ),
+                annot=True,
+                cmap="inferno",
+                linewidths=0.5,
+                linecolor="black",
+                cbar=False,
+            )
+            plt.title("Difference")
+
+            plt.subplot(155)
+            ax = sns.heatmap(
+                np.around(
+                    np.abs(
+                        self.matrix_with_path_test[i, :, :]
+                        - self.model.predict(
+                            self.matrix_after_conways_test[i, :, :].reshape(1, 5, 5, 1)
+                        ).reshape(5, 5)
+                        * 2
+                    ),
+                    decimals=2,
+                )
+                > 1.0,
+                annot=True,
+                cmap="inferno",
+                linewidths=0.5,
+                linecolor="black",
+                cbar=False,
+            )
+            plt.title("Difference > 1.0")
+
+            fig = plt.gcf()
+            fig.set_size_inches((22, 11), forward=False)
+            plt.savefig(
+                OUTPUT_PATH + MODEL_NAME + "_plot_extra_" + str(i) + ".png", dpi=500
+            )
+            plt.close()
+
+
 if __name__ == "__main__":
     # load dataset
     matrix, matrix_after_conways, matrix_with_path = load_datasets("dataset")
@@ -84,4 +302,26 @@ if __name__ == "__main__":
     print(" -Matrix after conways test shape: ", matrix_after_conways_test.shape)
     print(" -Matrix with path test shape: ", matrix_with_path_test.shape)
 
-    # TODO: Create model
+    # Create the CNN model
+    cnn = CNN(
+        matrix_after_conways_train,
+        matrix_with_path_train,
+        matrix_after_conways_test,
+        matrix_with_path_test,
+    )
+
+    # Build the CNN model
+    cnn.build()
+
+    # Save the CNN model
+    cnn.save()
+
+    # Plot the CNN model
+    cnn.plot()
+
+    # Plot extra useful plots
+    cnn.plot_extra()
+
+    # print hi
+
+    p
