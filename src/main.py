@@ -1,3 +1,4 @@
+import os
 import random
 from utils import load_datasets
 
@@ -7,7 +8,6 @@ from keras.models import Sequential
 from keras.layers import Conv2D, Flatten, Dense, Reshape
 from keras.optimizers import Adam
 import tensorflow as tf
-import datetime
 import seaborn as sns
 from contextlib import redirect_stdout
 
@@ -35,7 +35,7 @@ def preprocess(matrix, matrix_after_conways, matrix_with_path):
         return random.random() * 0.5
 
     random_order = [i for i in range(len(matrix))]
-    random.shuffle(random_order, custom_random)
+    # random.shuffle(random_order, custom_random)
 
     # Shuffle the matrices according to the randomly created list
     matrix[:] = matrix[random_order]
@@ -78,59 +78,68 @@ class CNN:
         matrix_with_path_train,
         matrix_after_conways_test,
         matrix_with_path_test,
+        model=None,
     ):
         self.matrix_after_conways_train = matrix_after_conways_train
         self.matrix_with_path_train = matrix_with_path_train
         self.matrix_after_conways_test = matrix_after_conways_test
         self.matrix_with_path_test = matrix_with_path_test
+        self.model = model
 
     def build(self):
         # Initialize the model
-        model = Sequential(name=MODEL_NAME)
+        self.model = Sequential(name=MODEL_NAME)
 
         # CNN layer for 2D input
-        model.add(
+        self.model.add(
             Conv2D(
                 32, (3, 3), activation="relu", input_shape=(MATRIX_ROWS, MATRIX_COLS, 1)
             )
         )
         # Flatten layer for the tensor to 1D vector
-        model.add(Flatten())
+        self.model.add(Flatten())
 
         # Dense layer
-        model.add(Dense(25, activation=ACTIVATION_FUNCTION))
+        self.model.add(Dense(25, activation=ACTIVATION_FUNCTION))
 
         # Need to reshape the tensor to 2D matrix
-        model.add(Reshape((MATRIX_ROWS, MATRIX_COLS, 1)))
+        self.model.add(Reshape((MATRIX_ROWS, MATRIX_COLS, 1)))
 
         # Compile the model
-        model.compile(optimizer=OPTIMIZER, loss=LOSS_FUNCTION, metrics=METRICS)
+        self.model.compile(optimizer=OPTIMIZER, loss=LOSS_FUNCTION, metrics=METRICS)
 
         # Callback to prevent overfitting
         callback = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=PATIENCE)
 
         # Print the model summary
-        model.summary()
+        self.model.summary()
 
         # Fit the model
-        model.fit(
-            matrix_after_conways_train,
-            matrix_with_path_train,
+        self.model.fit(
+            self.matrix_after_conways_train,
+            self.matrix_with_path_train,
             epochs=EPOCHS,
-            validation_data=(matrix_after_conways_test, matrix_with_path_test),
+            validation_data=(
+                self.matrix_after_conways_test,
+                self.matrix_with_path_test,
+            ),
             callbacks=[callback],
         )
 
-        return model
+        return self.model
 
-    def save(self, model):
+    def save(self):
+        # Create the output folder
+        if not os.path.exists(OUTPUT_PATH):
+            os.makedirs(OUTPUT_PATH)
+
         # Save the summary of the model
         with open(OUTPUT_PATH + MODEL_NAME + "_summary.txt", "w") as f:
             with redirect_stdout(f):
-                model.summary()
+                self.model.summary()
 
         # Save the model architecture
-        model_json = model.to_json()
+        model_json = self.model.to_json()
         with open(OUTPUT_PATH + MODEL_NAME + ".json", "w") as json_file:
             json_file.write(model_json)
 
@@ -144,7 +153,7 @@ class CNN:
             f.write("Patience: " + str(PATIENCE) + "\n")
 
         # Save the model
-        model.save("models/" + MODEL_NAME + ".h5")
+        self.model.save("models/" + MODEL_NAME + ".h5")
 
     def plot(self):
         # Plot the model
@@ -158,22 +167,25 @@ class CNN:
         # Plot the training and validation accuracy and loss at each epoch
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 2, 1)
-        plt.plot(self.history.history["accuracy"], label="Training Accuracy")
-        plt.plot(self.history.history["val_accuracy"], label="Validation Accuracy")
+        plt.plot(self.model.history.history["accuracy"], label="Training Accuracy")
+        plt.plot(
+            self.model.history.history["val_accuracy"], label="Validation Accuracy"
+        )
         plt.title("Training and Validation Accuracy")
         plt.xlabel("Epochs")
         plt.ylabel("Accuracy")
         plt.legend()
 
         plt.subplot(1, 2, 2)
-        plt.plot(self.history.history["loss"], label="Training Loss")
-        plt.plot(self.history.history["val_loss"], label="Validation Loss")
+        plt.plot(self.model.history.history["loss"], label="Training Loss")
+        plt.plot(self.model.history.history["val_loss"], label="Validation Loss")
         plt.title("Training and Validation Loss")
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.legend()
 
         plt.savefig(OUTPUT_PATH + MODEL_NAME + "_plot.png")
+        plt.close()
 
     # Plot extra plots that show the matrices before and after Conways,
     # the prediction and the difference between the prediction and the matrix with path
