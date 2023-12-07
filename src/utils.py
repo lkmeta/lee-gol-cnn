@@ -300,9 +300,9 @@ def generate_dataset(num_of_matrices, N, M, test_name):
     y_target = np.array(y_target)
 
     # save numpy arrays to files
-    np.save("./output/" + test_name + "/matrices/X_input.npy", X_input)
-    np.save("./output/" + test_name + "/matrices/X_after_conways.npy", X_after_conways)
-    np.save("./output/" + test_name + "/matrices/y_target.npy", y_target)
+    # np.save("./output/" + test_name + "/matrices/X_input.npy", X_input)
+    # np.save("./output/" + test_name + "/matrices/X_after_conways.npy", X_after_conways)
+    # np.save("./output/" + test_name + "/matrices/y_target.npy", y_target)
 
     print("\n\nMatrices saved to files successfully!")
 
@@ -349,18 +349,23 @@ def remove_duplicates(matrix, matrix_after_conways, matrix_with_path):
     return matrix_clean, matrix_after_conways_clean, matrix_with_path_clean
 
 
-# Load datasets from the output directory
-def load_datasets(name):
+# Load datasets from the datasets directory
+def load_datasets(name, index=1):
     # Load the first dataset
-    dataset_name = name + "_1"
-    matrix = np.load("./output/" + dataset_name + "/matrices/X_input.npy")
+    dataset_name = name + "_" + str(index)
+    matrix = np.load("./datasets/" + dataset_name + "/matrices/X_input.npy")
     matrix_after_conways = np.load(
-        "./output/" + dataset_name + "/matrices/X_after_conways.npy"
+        "./datasets/" + dataset_name + "/matrices/X_after_conways.npy"
     )
-    matrix_with_path = np.load("./output/" + dataset_name + "/matrices/y_target.npy")
+    matrix_with_path = np.load("./datasets/" + dataset_name + "/matrices/y_target.npy")
+
+    # # Print the shapes of the matrices
+    # print("matrix shape: ", matrix.shape)
+    # print("matrix_after_conways shape: ", matrix_after_conways.shape)
+    # print("matrix_with_path shape: ", matrix_with_path.shape)
 
     # Load all datasets from the output directory that start with "dataset_"
-    with os.scandir("./output") as entries:
+    with os.scandir("./datasets") as entries:
         for entry in entries:
             if (
                 entry.is_dir()
@@ -370,7 +375,7 @@ def load_datasets(name):
                 matrix = np.concatenate(
                     (
                         matrix,
-                        np.load("./output/" + entry.name + "/matrices/X_input.npy"),
+                        np.load("./datasets/" + entry.name + "/matrices/X_input.npy"),
                     ),
                     axis=0,
                 )
@@ -378,7 +383,7 @@ def load_datasets(name):
                     (
                         matrix_after_conways,
                         np.load(
-                            "./output/" + entry.name + "/matrices/X_after_conways.npy"
+                            "./datasets/" + entry.name + "/matrices/X_after_conways.npy"
                         ),
                     ),
                     axis=0,
@@ -386,7 +391,7 @@ def load_datasets(name):
                 matrix_with_path = np.concatenate(
                     (
                         matrix_with_path,
-                        np.load("./output/" + entry.name + "/matrices/y_target.npy"),
+                        np.load("./datasets/" + entry.name + "/matrices/y_target.npy"),
                     ),
                     axis=0,
                 )
@@ -409,9 +414,9 @@ def load_datasets(name):
     # print("matrix_with_path_clean shape: ", matrix_with_path_clean.shape)
 
     # # Save the matrices
-    # np.save("./output/X_input_clean.npy", matrix_clean)
-    # np.save("./output/X_after_conways_clean.npy", matrix_after_conways_clean)
-    # np.save("./output/y_target_clean.npy", matrix_with_path_clean)
+    np.save("./output/X_input_clean.npy", matrix_clean)
+    np.save("./output/X_after_conways_clean.npy", matrix_after_conways_clean)
+    np.save("./output/y_target_clean.npy", matrix_with_path_clean)
 
     # print("\n\nMatrices saved to files successfully!")
 
