@@ -13,7 +13,8 @@ from contextlib import redirect_stdout
 
 
 # Global Model Parameters
-OUTPUT_PATH = "output/model/"
+OUTPUT_PATH = "output/"
+CURRENT_RUN = "run_"
 MODEL_NAME = "CNN_model"
 ACTIVATION_FUNCTION = "sigmoid"
 LOSS_FUNCTION = "mean_squared_error"
@@ -25,6 +26,17 @@ PATIENCE = 10
 NUM_OF_MATRICES = 100
 MATRIX_ROWS = 5
 MATRIX_COLS = 5
+
+
+# Function to find the last run of the model
+def find_last_run():
+    # Find the last run of the model
+    last_run = 0
+    for entry in os.scandir(OUTPUT_PATH):
+        if entry.is_dir() and entry.name.startswith(CURRENT_RUN):
+            last_run = max(last_run, int(entry.name.split("_")[1]))
+
+    return last_run
 
 
 # Preprocess dataset (shuffle and split into training and test sets (80%:20%))
@@ -129,22 +141,24 @@ class CNN:
         return self.model
 
     def save(self):
+        output_path = OUTPUT_PATH + CURRENT_RUN + str(find_last_run() + 1) + "/"
+
         # Create the output folder
-        if not os.path.exists(OUTPUT_PATH):
-            os.makedirs(OUTPUT_PATH)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
 
         # Save the summary of the model
-        with open(OUTPUT_PATH + MODEL_NAME + "_summary.txt", "w") as f:
+        with open(output_path + MODEL_NAME + "_summary.txt", "w") as f:
             with redirect_stdout(f):
                 self.model.summary()
 
         # Save the model architecture
         model_json = self.model.to_json()
-        with open(OUTPUT_PATH + MODEL_NAME + ".json", "w") as json_file:
+        with open(output_path + MODEL_NAME + ".json", "w") as json_file:
             json_file.write(model_json)
 
         # Save the model parameters
-        with open(OUTPUT_PATH + MODEL_NAME + "_parameters.txt", "w") as f:
+        with open(output_path + MODEL_NAME + "_parameters.txt", "w") as f:
             f.write("Activation function: " + ACTIVATION_FUNCTION + "\n")
             f.write("Loss function: " + LOSS_FUNCTION + "\n")
             f.write("Optimizer: " + OPTIMIZER + "\n")
@@ -156,10 +170,11 @@ class CNN:
         self.model.save("models/" + MODEL_NAME + ".h5")
 
     def plot(self):
+        output_path = OUTPUT_PATH + CURRENT_RUN + str(find_last_run()) + "/"
         # Plot the model
         tf.keras.utils.plot_model(
             self.model,
-            to_file=OUTPUT_PATH + MODEL_NAME + ".png",
+            to_file=output_path + MODEL_NAME + ".png",
             show_shapes=True,
             show_layer_names=True,
         )
@@ -184,12 +199,13 @@ class CNN:
         plt.ylabel("Loss")
         plt.legend()
 
-        plt.savefig(OUTPUT_PATH + MODEL_NAME + "_plot.png")
+        plt.savefig(output_path + MODEL_NAME + "_plot.png")
         plt.close()
 
     # Plot extra plots that show the matrices before and after Conways,
     # the prediction and the difference between the prediction and the matrix with path
     def plot_extra(self):
+        output_path = OUTPUT_PATH + CURRENT_RUN + str(find_last_run()) + "/"
         for i in range(5):
             manager = plt.get_current_fig_manager()
             manager.full_screen_toggle()
@@ -216,15 +232,12 @@ class CNN:
             plt.title("Matrix with path")
 
             plt.subplot(153)
-            # np.around(model.predict(X_val_intermediate[i,:,:].reshape(1,5,5,1)).reshape(5,5) * 2, decimals=2),
-            # annot=True, cmap="inferno", linewidths=.5, linecolor='black', cbar=False)
             ax = sns.heatmap(
                 np.around(
                     np.abs(
-                        self.matrix_after_conways_test[i, :, :]
-                        .reshape(1, 5, 5, 1)
-                        .reshape(5, 5)
-                        * 2
+                        self.model.predict(
+                            self.matrix_after_conways_test[i, :, :].reshape(1, 5, 5, 1)
+                        ).reshape(5, 5)
                     ),
                     decimals=2,
                 ),
@@ -280,17 +293,17 @@ class CNN:
             fig = plt.gcf()
             fig.set_size_inches((22, 11), forward=False)
             plt.savefig(
-                OUTPUT_PATH + MODEL_NAME + "_plot_extra_" + str(i) + ".png", dpi=500
+                output_path + MODEL_NAME + "_plot_extra_" + str(i) + ".png", dpi=500
             )
             plt.close()
 
 
 if __name__ == "__main__":
-    # load dataset
-    matrix, matrix_after_conways, matrix_with_path = load_datasets("dataset")
+    # load datasets
+    matrix, matrix_after_conways, matrix_with_path = load_datasets("dataset", 1)
 
     # print matrices shapes
-    print("\nDataset before preprocessing:")
+    print("\n\nDataset before preprocessing:")
     print(" -Matrix shape: ", matrix.shape)
     print(" -Matrix after conways shape: ", matrix_after_conways.shape)
     print(" -Matrix with path shape: ", matrix_with_path.shape)
