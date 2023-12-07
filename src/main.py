@@ -300,7 +300,14 @@ class CNN:
 
 if __name__ == "__main__":
     # load datasets
-    matrix, matrix_after_conways, matrix_with_path = load_datasets("dataset", 1)
+    # matrix, matrix_after_conways, matrix_with_path = load_datasets("dataset", 1)
+
+    # load cleaned datasets
+    matrix, matrix_after_conways, matrix_with_path = (
+        np.load("./output/X_input_clean.npy"),
+        np.load("./output/X_after_conways_clean.npy"),
+        np.load("./output/y_target_clean.npy"),
+    )
 
     # print matrices shapes
     print("\n\nDataset before preprocessing:")
